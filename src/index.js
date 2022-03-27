@@ -8,6 +8,13 @@ const changePage$ = fromEvent($chagePageButton, "click");
 
 const dataLayer = (window.dataLayer = []);
 
+Object.defineProperty(dataLayer, "push", {
+  value() {
+    Array.prototype.push.apply(this, arguments);
+    console.log(this[this.length - 1]);
+  },
+});
+
 const trackAddToCart = () => {
   dataLayer.push({
     event: "add_to_cart",
