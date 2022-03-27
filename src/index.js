@@ -1,5 +1,12 @@
 import { fromEvent, interval, of, merge, NEVER } from "rxjs";
-import { delay, map, switchMap, tap } from "rxjs/operators";
+import {
+  delay,
+  map,
+  startWith,
+  switchMap,
+  tap,
+  withLatestFrom,
+} from "rxjs/operators";
 
 const $addToCart = document.getElementById("AddToCart");
 const $chagePageButton = document.getElementById("ChangePage");
@@ -45,11 +52,10 @@ const pageDataLoaded$ = changePage$.pipe(
   tap(() => console.log("page data loaded")),
   map(() => ({
     title: `New Page ${Date.now()}`,
-  }))
+  })),
+  tap((pageData) => console.log(pageData))
 );
 
-// TODO: what if no search data gets loaded?
-// TODO: emit multiple times
 const searchDataLoaded$ = interval(500).pipe(
   map((count) => ({
     event: "product_search",
@@ -61,23 +67,26 @@ const searchDataLoaded$ = interval(500).pipe(
     search: {
       term: "foo",
     },
-  }))
+  })),
+  startWith(null)
 );
+
+const otherDataLoaded$ = of({
+  foo: "bar",
+});
 
 // page changes => new subcription
 // gather all load calls
 // when page data loaded is received => finish
-// TODO: We need to wait for pageDataLoaded$
-// and take last value from searchDataLoaded$ ONLY IF it has one
-
-const gatherLoads$ = merge(
-  changePage$.pipe(map(() => true)),
-  pageDataLoaded$.pipe(map(() => false))
-)
+const gatherLoads$ = merge(changePage$.pipe(map(() => null)), pageDataLoaded$)
   .pipe(
-    switchMap((isGathering) => {
-      console.log(`isGathering: ${isGathering}`);
-      return isGathering ? NEVER : of(isGathering);
-    })
+    switchMap((pageData) => {
+      const isGathering = pageData === null;
+      return isGathering ? NEVER : of(pageData);
+    }),
+    withLatestFrom(searchDataLoaded$, otherDataLoaded$)
   )
-  .subscribe(() => console.log("TIME TO COMMIT"));
+  .subscribe((entries) => {
+    console.log("TIME TO COMMIT");
+    console.log(entries);
+  });
