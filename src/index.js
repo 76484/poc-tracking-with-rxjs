@@ -1,5 +1,5 @@
-import { fromEvent, interval, Observable } from "rxjs";
-import { combineLatestWith, delay, map, tap } from "rxjs/operators";
+import { fromEvent, interval, of, merge, NEVER } from "rxjs";
+import { delay, map, switchMap, tap } from "rxjs/operators";
 
 const $addToCart = document.getElementById("AddToCart");
 const $chagePageButton = document.getElementById("ChangePage");
@@ -50,12 +50,10 @@ const pageDataLoaded$ = changePage$.pipe(
 
 // TODO: what if no search data gets loaded?
 // TODO: emit multiple times
-const searchDataLoaded$ = changePage$.pipe(
-  tap(() => console.log("start search load emits")),
-  delay(500),
-  tap(() => console.log("search data loaded")),
-  map(() => ({
+const searchDataLoaded$ = interval(500).pipe(
+  map((count) => ({
     event: "product_search",
+    count,
     products: [
       { product_id: `${Math.round(Math.random() * 1000)}` },
       { product_id: `${Math.round(Math.random() * 1000)}` },
@@ -71,9 +69,15 @@ const searchDataLoaded$ = changePage$.pipe(
 // when page data loaded is received => finish
 // TODO: We need to wait for pageDataLoaded$
 // and take last value from searchDataLoaded$ ONLY IF it has one
-changePage$
+
+const gatherLoads$ = merge(
+  changePage$.pipe(map(() => true)),
+  pageDataLoaded$.pipe(map(() => false))
+)
   .pipe(
-    tap(() => console.log("start collecting loads")),
-    combineLatestWith(pageDataLoaded$, searchDataLoaded$)
+    switchMap((isGathering) => {
+      console.log(`isGathering: ${isGathering}`);
+      return isGathering ? NEVER : of(isGathering);
+    })
   )
-  .subscribe((x) => console.log(x));
+  .subscribe(() => console.log("TIME TO COMMIT"));
