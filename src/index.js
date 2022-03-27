@@ -1,5 +1,5 @@
 import { fromEvent, interval, Observable } from "rxjs";
-import { delay, map } from "rxjs/operators";
+import { combineLatestWith, delay, map, tap } from "rxjs/operators";
 
 const $addToCart = document.getElementById("AddToCart");
 const $chagePageButton = document.getElementById("ChangePage");
@@ -34,35 +34,46 @@ const trackPageView = () => {
   });
 };
 
-const searchDataLoaded$ = interval(3000)
-  .pipe(
-    map(() => ({
-      event: "product_search",
-      products: [
-        { product_id: `${Math.round(Math.random() * 1000)}` },
-        { product_id: `${Math.round(Math.random() * 1000)}` },
-      ],
-      search: {
-        term: "foo",
-      },
-    }))
-  )
-  .subscribe((x) => console.log(x));
-
 addToCart$.subscribe(trackAddToCart);
 
-// change page starts a new "transaction"
-
-const pageDataLoaded$ = new Observable((subscriber) => {
-  subscriber.next({
-    title: `New Page ${Date.now()}`,
-  });
-});
+changePage$.pipe(tap(() => console.log("got page change"))).subscribe();
 
 // assume page data loads 2 second after page changed
-changePage$.subscribe((_) => {
-  console.log("page changed");
-  pageDataLoaded$
-    .pipe(delay(2000))
-    .subscribe((pageData) => console.log(pageData));
-});
+const pageDataLoaded$ = changePage$.pipe(
+  tap(() => console.log("wait for page data to load")),
+  delay(2000),
+  tap(() => console.log("page data loaded")),
+  map(() => ({
+    title: `New Page ${Date.now()}`,
+  }))
+);
+
+// TODO: what if no search data gets loaded?
+// TODO: emit multiple times
+const searchDataLoaded$ = changePage$.pipe(
+  tap(() => console.log("start search load emits")),
+  delay(500),
+  tap(() => console.log("search data loaded")),
+  map(() => ({
+    event: "product_search",
+    products: [
+      { product_id: `${Math.round(Math.random() * 1000)}` },
+      { product_id: `${Math.round(Math.random() * 1000)}` },
+    ],
+    search: {
+      term: "foo",
+    },
+  }))
+);
+
+// page changes => new subcription
+// gather all load calls
+// when page data loaded is received => finish
+// TODO: We need to wait for pageDataLoaded$
+// and take last value from searchDataLoaded$ ONLY IF it has one
+changePage$
+  .pipe(
+    tap(() => console.log("start collecting loads")),
+    combineLatestWith(pageDataLoaded$, searchDataLoaded$)
+  )
+  .subscribe((x) => console.log(x));
