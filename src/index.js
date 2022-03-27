@@ -78,7 +78,7 @@ const otherDataLoaded$ = of({
 // page changes => new subcription
 // gather all load calls
 // when page data loaded is received => finish
-const gatherLoads$ = merge(changePage$.pipe(map(() => null)), pageDataLoaded$)
+merge(changePage$.pipe(map(() => null)), pageDataLoaded$)
   .pipe(
     switchMap((pageData) => {
       const isGathering = pageData === null;
@@ -88,5 +88,5 @@ const gatherLoads$ = merge(changePage$.pipe(map(() => null)), pageDataLoaded$)
   )
   .subscribe((entries) => {
     console.log("TIME TO COMMIT");
-    console.log(entries);
+    entries.forEach((entry) => dataLayer.push(entry));
   });
