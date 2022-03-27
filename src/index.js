@@ -1,5 +1,5 @@
-import { fromEvent, interval } from "rxjs";
-import { map } from "rxjs/operators";
+import { fromEvent, interval, Observable } from "rxjs";
+import { delay, map } from "rxjs/operators";
 
 const $addToCart = document.getElementById("AddToCart");
 const $chagePageButton = document.getElementById("ChangePage");
@@ -34,7 +34,7 @@ const trackPageView = () => {
   });
 };
 
-interval(2000)
+const searchDataLoaded$ = interval(3000)
   .pipe(
     map(() => ({
       event: "product_search",
@@ -45,9 +45,24 @@ interval(2000)
       search: {
         term: "foo",
       },
-    })
+    }))
   )
   .subscribe((x) => console.log(x));
 
 addToCart$.subscribe(trackAddToCart);
-changePage$.subscribe(trackPageView);
+
+// change page starts a new "transaction"
+
+const pageDataLoaded$ = new Observable((subscriber) => {
+  subscriber.next({
+    title: `New Page ${Date.now()}`,
+  });
+});
+
+// assume page data loads 2 second after page changed
+changePage$.subscribe((_) => {
+  console.log("page changed");
+  pageDataLoaded$
+    .pipe(delay(2000))
+    .subscribe((pageData) => console.log(pageData));
+});
