@@ -1,4 +1,5 @@
-import { fromEvent } from "rxjs";
+import { fromEvent, interval } from "rxjs";
+import { mapTo } from "rxjs/operators";
 
 const $addToCart = document.getElementById("AddToCart");
 const $chagePageButton = document.getElementById("ChangePage");
@@ -32,6 +33,21 @@ const trackPageView = () => {
     },
   });
 };
+
+interval(2000)
+  .pipe(
+    mapTo({
+      event: "product_search",
+      products: [
+        { product_id: `${Math.round(Math.random() * 1000)}` },
+        { product_id: `${Math.round(Math.random() * 1000)}` },
+      ],
+      search: {
+        term: "foo",
+      },
+    })
+  )
+  .subscribe((x) => console.log(x));
 
 addToCart$.subscribe(trackAddToCart);
 changePage$.subscribe(trackPageView);
